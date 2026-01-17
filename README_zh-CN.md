@@ -20,9 +20,6 @@
     <img src="https://img.shields.io/pub/points/vcard_dart" alt="Pub Points">
   </a>
   <a href="https://pub.dev/packages/vcard_dart/score">
-    <img src="https://img.shields.io/pub/popularity/vcard_dart" alt="Pub Popularity">
-  </a>
-  <a href="https://pub.dev/packages/vcard_dart/score">
     <img src="https://img.shields.io/pub/likes/vcard_dart" alt="Pub Likes">
   </a>
   <a href="https://opensource.org/licenses/MIT">
