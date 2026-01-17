@@ -1,20 +1,39 @@
 # vcard_dart
 
-English | [简体中文](README_zh-CN.md)
-
 <p align="center">
   <img src="vcard.svg" width="200" alt="vcard_dart logo">
 </p>
 
-A comprehensive vCard parsing and generation library for Dart/Flutter.
+<p align="center">
+  English | <a href="README_zh-CN.md">简体中文</a>
+</p>
 
-[![Pub Version](https://img.shields.io/pub/v/vcard_dart)](https://pub.dev/packages/vcard_dart)
-[![Pub Points](https://img.shields.io/pub/points/vcard_dart)](https://pub.dev/packages/vcard_dart/score)
-[![Pub Popularity](https://img.shields.io/pub/popularity/vcard_dart)](https://pub.dev/packages/vcard_dart/score)
-[![Pub Likes](https://img.shields.io/pub/likes/vcard_dart)](https://pub.dev/packages/vcard_dart/score)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  A comprehensive vCard parsing and generation library for Dart/Flutter.
+</p>
 
-**[📖 API Documentation](https://pub.dev/documentation/vcard_dart/latest/)** | **[📦 pub.dev](https://pub.dev/packages/vcard_dart)**
+<p align="center">
+  <a href="https://pub.dev/packages/vcard_dart">
+    <img src="https://img.shields.io/pub/v/vcard_dart" alt="Pub Version">
+  </a>
+  <a href="https://pub.dev/packages/vcard_dart/score">
+    <img src="https://img.shields.io/pub/points/vcard_dart" alt="Pub Points">
+  </a>
+  <a href="https://pub.dev/packages/vcard_dart/score">
+    <img src="https://img.shields.io/pub/popularity/vcard_dart" alt="Pub Popularity">
+  </a>
+  <a href="https://pub.dev/packages/vcard_dart/score">
+    <img src="https://img.shields.io/pub/likes/vcard_dart" alt="Pub Likes">
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://pub.dev/documentation/vcard_dart/latest/">📖 API Documentation</a> |
+  <a href="https://pub.dev/packages/vcard_dart">📦 pub.dev</a>
+</p>
 
 ## Features
 
