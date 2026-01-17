@@ -2,6 +2,10 @@
 
 [English](README.md) | 简体中文
 
+<p align="center">
+  <img src="vcard.svg" width="200" alt="vcard_dart logo">
+</p>
+
 为 Dart/Flutter 提供的综合性 vCard 解析与生成库。
 
 [![Pub Version](https://img.shields.io/pub/v/vcard_dart)](https://pub.dev/packages/vcard_dart)

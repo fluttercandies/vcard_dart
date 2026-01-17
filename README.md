@@ -2,6 +2,10 @@
 
 English | [简体中文](README_zh-CN.md)
 
+<p align="center">
+  <img src="vcard.svg" width="200" alt="vcard_dart logo">
+</p>
+
 A comprehensive vCard parsing and generation library for Dart/Flutter.
 
 [![Pub Version](https://img.shields.io/pub/v/vcard_dart)](https://pub.dev/packages/vcard_dart)
