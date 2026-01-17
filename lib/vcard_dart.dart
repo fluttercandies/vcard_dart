@@ -40,7 +40,7 @@
 /// final xml = xcard.toXml(vcard);
 /// final restored2 = xcard.fromXml(xml);
 /// ```
-library;
+library vcard_dart;
 
 // Core types
 export 'src/core/core.dart';

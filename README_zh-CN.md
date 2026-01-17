@@ -51,7 +51,7 @@
 
 ```yaml
 dependencies:
-  vcard_dart: ^2.0.0
+  vcard_dart: any
 ```
 
 然后运行：
