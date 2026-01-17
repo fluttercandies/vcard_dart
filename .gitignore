@@ -1,0 +1,45 @@
+# https://dart.dev/guides/libraries/private-files
+# Created by `dart pub`
+.dart_tool/
+
+# Avoid committing pubspec.lock for library packages; see
+# https://dart.dev/guides/libraries/private-files#pubspeclock.
+pubspec.lock
+
+# IDE and editor directories
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# Build outputs
+build/
+*.class
+*.log
+*.pyc
+
+# Coverage
+coverage/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Documentation build
+doc/api/
