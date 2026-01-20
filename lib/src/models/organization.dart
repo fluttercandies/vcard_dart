@@ -1,5 +1,9 @@
 /// Represents organization-related information (ORG, TITLE, ROLE properties).
 ///
+/// This class supports both structured data and raw string values. When
+/// the organization value cannot be parsed into structured components (e.g., from
+/// a non-compliant vCard), it will be stored as a raw value.
+///
 /// ## Example
 ///
 /// ```dart
@@ -16,6 +20,11 @@
 ///   'Engineering',
 ///   'Mobile Team',
 /// ]);
+///
+/// // Create from raw value (unstructured string)
+/// final rawOrg = Organization.raw('Acme Inc. - Engineering Department');
+/// print(rawOrg.isRaw);  // true
+/// print(rawOrg.rawValue);  // 'Acme Inc. - Engineering Department'
 ///
 /// // Get formatted string
 /// final formatted = org.toFormattedString();  // 'Acme Inc., Engineering, Mobile Team'
@@ -38,46 +47,181 @@ class Organization {
   /// Sort string for ordering.
   final String? sortAs;
 
+  /// Raw string value when the organization cannot be parsed into components.
+  ///
+  /// This is used when the vCard contains an organization that doesn't follow
+  /// the standard structured format (e.g., just a plain string).
+  final String? rawValue;
+
   /// Creates a new organization.
-  const Organization({required this.name, this.units = const [], this.sortAs});
+  const Organization({
+    required this.name,
+    this.units = const [],
+    this.sortAs,
+    this.rawValue,
+  });
+
+  /// Creates an organization with only a name (no units).
+  const Organization.simple(this.name)
+      : units = const [],
+        sortAs = null,
+        rawValue = null;
+
+  /// Creates an organization from a raw (unstructured) string.
+  ///
+  /// Use this when you have a plain string organization that doesn't follow
+  /// the structured vCard format.
+  ///
+  /// Example:
+  /// ```dart
+  /// final org = Organization.raw('Acme Inc. - Engineering');
+  /// ```
+  const Organization.raw(String value, {this.sortAs})
+      : name = '',
+        units = const [],
+        rawValue = value;
 
   /// Creates an organization from a list of components.
   ///
   /// First element is the name, remaining are units.
-  factory Organization.fromComponents(List<String> components) {
+  factory Organization.fromComponents(List<String> components,
+      {String? sortAs}) {
     if (components.isEmpty) {
-      return const Organization(name: '');
+      return Organization(name: '', sortAs: sortAs);
     }
     return Organization(
       name: components.first,
       units: components.length > 1 ? components.sublist(1) : const [],
+      sortAs: sortAs,
     );
   }
 
-  /// Whether the organization name is empty.
-  bool get isEmpty => name.isEmpty;
+  /// Creates an organization from a value string, auto-detecting format.
+  ///
+  /// If the value contains semicolons, it's treated as structured data.
+  /// Otherwise, it's stored as a raw value.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Structured format (with semicolons)
+  /// final structured = Organization.fromValue('Acme Inc.;Engineering;R&D');
+  /// print(structured.isStructured); // true
+  ///
+  /// // Raw format (without semicolons)
+  /// final raw = Organization.fromValue('Acme Inc. - Engineering Department');
+  /// print(raw.isRaw); // true
+  /// ```
+  factory Organization.fromValue(String value, {String? sortAs}) {
+    if (value.contains(';')) {
+      // Structured format - parse components
+      final components = value.split(';');
+      return Organization.fromComponents(components, sortAs: sortAs);
+    } else if (value.trim().isNotEmpty) {
+      // Raw format - store as-is
+      return Organization.raw(value, sortAs: sortAs);
+    }
+    return Organization(name: '', sortAs: sortAs);
+  }
 
-  /// Whether the organization name is not empty.
-  bool get isNotEmpty => name.isNotEmpty;
+  /// Whether this organization is stored as a raw value.
+  bool get isRaw => rawValue != null;
+
+  /// Whether this organization has structured components.
+  bool get isStructured => !isRaw;
+
+  /// Whether the organization name is empty (including raw value).
+  bool get isEmpty => (rawValue == null || rawValue!.isEmpty) && name.isEmpty;
+
+  /// Whether the organization name is not empty (including raw value).
+  bool get isNotEmpty => !isEmpty;
 
   /// Converts to a list of components for serialization.
+  ///
+  /// If this is a raw value, returns a single-element list with the raw string.
   List<String> toComponents() {
+    if (rawValue != null) {
+      return [rawValue!];
+    }
     return [name, ...units];
   }
 
+  /// Returns the value for serialization.
+  ///
+  /// If this is a raw value, returns the raw string.
+  /// Otherwise, returns the semicolon-separated components.
+  String toValue() {
+    if (rawValue != null) {
+      return rawValue!;
+    }
+    return toComponents().join(';');
+  }
+
   /// Returns a formatted string representation.
+  ///
+  /// If this is a raw value, returns the raw string.
+  /// Otherwise, constructs the formatted string from components.
   String toFormattedString({String separator = ', '}) {
+    if (rawValue != null) {
+      return rawValue!;
+    }
     if (units.isEmpty) return name;
     return [name, ...units].join(separator);
   }
 
   /// Creates a copy with optional modifications.
-  Organization copyWith({String? name, List<String>? units, String? sortAs}) {
+  ///
+  /// Set [clearRaw] to true to remove the raw value and convert to structured format.
+  ///
+  /// Example:
+  /// ```dart
+  /// final raw = Organization.raw('Acme Inc.');
+  /// final structured = raw.copyWith(
+  ///   clearRaw: true,
+  ///   name: 'Acme Inc.',
+  /// );
+  /// print(structured.isStructured); // true
+  /// ```
+  Organization copyWith({
+    String? name,
+    List<String>? units,
+    String? sortAs,
+    String? rawValue,
+    bool clearRaw = false,
+  }) {
     return Organization(
       name: name ?? this.name,
       units: units ?? this.units,
       sortAs: sortAs ?? this.sortAs,
+      rawValue: clearRaw ? null : (rawValue ?? this.rawValue),
     );
+  }
+
+  /// Converts a raw value to structured format by attempting to parse it.
+  ///
+  /// If this is already structured, returns this.
+  /// If this is raw, attempts to parse the raw value intelligently.
+  Organization toStructured() {
+    if (!isRaw || rawValue == null) {
+      return this;
+    }
+
+    // Try to parse common organization patterns
+    final value = rawValue!.trim();
+
+    // Try common separators: " - ", " / ", "; "
+    for (final separator in [' - ', ' / ', '; ']) {
+      if (value.contains(separator)) {
+        final parts = value.split(separator).map((s) => s.trim()).toList();
+        return Organization(
+          name: parts.first,
+          units: parts.length > 1 ? parts.sublist(1) : const [],
+          sortAs: sortAs,
+        );
+      }
+    }
+
+    // No separator found - treat whole string as name
+    return Organization(name: value, sortAs: sortAs);
   }
 
   @override
@@ -87,6 +231,9 @@ class Organization {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! Organization) return false;
+    if (rawValue != null || other.rawValue != null) {
+      return rawValue == other.rawValue;
+    }
     if (name != other.name) return false;
     if (units.length != other.units.length) return false;
     for (var i = 0; i < units.length; i++) {
@@ -96,7 +243,12 @@ class Organization {
   }
 
   @override
-  int get hashCode => Object.hash(name, Object.hashAll(units));
+  int get hashCode {
+    if (rawValue != null) {
+      return rawValue.hashCode;
+    }
+    return Object.hash(name, Object.hashAll(units));
+  }
 }
 
 /// Represents related person information (RELATED property, vCard 4.0).

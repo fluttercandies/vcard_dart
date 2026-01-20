@@ -143,6 +143,51 @@ final vcard = VCard()
   ..categories = ['同事', '技术', 'VIP'];
 ```
 
+### 原始值支持（非标准 vCard）
+
+本库支持解析和生成非结构化属性值的 vCard，以更好地兼容非标准数据：
+
+```dart
+// 从原始（非结构化）值创建
+final rawName = StructuredName.raw('张三');
+print(rawName.isRaw); // true
+
+final rawAddress = Address.raw('中关村大街1号, 北京市, 100000');
+print(rawAddress.isRaw); // true
+
+final rawOrg = Organization.raw('科技公司 - 研发部');
+print(rawOrg.isRaw); // true
+
+// 从值字符串自动检测格式
+final autoName = StructuredName.fromValue('张;三;;;'); // 结构化
+final rawAutoName = StructuredName.fromValue('张三'); // 原始值
+
+// 将原始值转换为结构化
+final parsedName = rawName.toStructured();
+print(parsedName.family); // 张
+print(parsedName.given); // 三
+
+// 用于 vCard
+final vcard = VCard()
+  ..formattedName = '李四'
+  ..name = StructuredName.raw('李四'); // 用于非标准来源
+
+// 解析器自动处理两种格式
+const nonCompliantVcard = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:王五
+N:王五
+ADR:科技路123号, 深圳市, 广东省 518000
+ORG:科技公司
+END:VCARD
+''';
+
+final vcard = parser.parseSingle(nonCompliantVcard);
+print(vcard.name.isRaw); // true
+print(vcard.name.rawValue); // "王五"
+```
+
 ### 解析 vCard
 
 ```dart

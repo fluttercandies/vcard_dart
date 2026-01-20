@@ -38,19 +38,27 @@ class Gender {
   const Gender({this.sex, this.identity});
 
   /// Creates a male gender.
-  const Gender.male() : sex = 'M', identity = null;
+  const Gender.male()
+      : sex = 'M',
+        identity = null;
 
   /// Creates a female gender.
-  const Gender.female() : sex = 'F', identity = null;
+  const Gender.female()
+      : sex = 'F',
+        identity = null;
 
   /// Creates an other gender.
   const Gender.other([this.identity]) : sex = 'O';
 
   /// Creates a not applicable gender.
-  const Gender.notApplicable() : sex = 'N', identity = null;
+  const Gender.notApplicable()
+      : sex = 'N',
+        identity = null;
 
   /// Creates an unknown gender.
-  const Gender.unknown() : sex = 'U', identity = null;
+  const Gender.unknown()
+      : sex = 'U',
+        identity = null;
 
   /// Parses a gender value from vCard format.
   factory Gender.parse(String value) {
@@ -385,10 +393,10 @@ class DateOrDateTime {
 
   /// Creates a date-only value.
   const DateOrDateTime.date(this.year, this.month, this.day)
-    : hour = null,
-      minute = null,
-      second = null,
-      timezoneOffset = null;
+      : hour = null,
+        minute = null,
+        second = null,
+        timezoneOffset = null;
 
   /// Creates a date-time value without timezone.
   const DateOrDateTime.dateTime(

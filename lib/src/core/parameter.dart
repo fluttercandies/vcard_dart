@@ -36,11 +36,11 @@ class VCardParameter {
 
   /// Creates a new parameter with the given name and values.
   VCardParameter(this.name, [List<String>? values])
-    : values = List.unmodifiable(values ?? const []);
+      : values = List.unmodifiable(values ?? const []);
 
   /// Creates a new parameter with a single value.
   VCardParameter.single(this.name, String value)
-    : values = List.unmodifiable([value]);
+      : values = List.unmodifiable([value]);
 
   /// The first value, or null if empty.
   String? get value => values.isNotEmpty ? values.first : null;
@@ -130,7 +130,7 @@ class VCardParameters extends IterableBase<VCardParameter> {
 
   /// Creates a new parameter collection.
   VCardParameters([List<VCardParameter>? parameters])
-    : _parameters = List.unmodifiable(parameters ?? const []);
+      : _parameters = List.unmodifiable(parameters ?? const []);
 
   /// Creates an empty parameter collection.
   const VCardParameters.empty() : _parameters = const [];

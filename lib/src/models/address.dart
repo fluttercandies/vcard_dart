@@ -2,6 +2,10 @@
 ///
 /// The address consists of multiple components as defined in vCard specs.
 ///
+/// This class supports both structured data and raw string values. When
+/// the address value cannot be parsed into structured components (e.g., from
+/// a non-compliant vCard or a simple address string), it will be stored as a raw value.
+///
 /// ## Example
 ///
 /// ```dart
@@ -32,6 +36,11 @@
 /// final fromList = Address.fromComponents([
 ///   '', '123 Main St', 'Springfield', 'IL', '62701', 'USA'
 /// ]);
+///
+/// // Create from raw value (unstructured string)
+/// final rawAddr = Address.raw('123 Main St, San Francisco, CA 94102');
+/// print(rawAddr.isRaw);  // true
+/// print(rawAddr.rawValue);  // '123 Main St, San Francisco, CA 94102'
 ///
 /// // Format for display
 /// final formatted = work.toFormattedString();  // Multi-line address
@@ -81,6 +90,12 @@ class Address {
   /// Language tag.
   final String? language;
 
+  /// Raw string value when the address cannot be parsed into components.
+  ///
+  /// This is used when the vCard contains an address that doesn't follow
+  /// the standard structured format (e.g., just a plain string).
+  final String? rawValue;
+
   /// Creates a new address.
   const Address({
     this.poBox = '',
@@ -96,7 +111,34 @@ class Address {
     this.geo,
     this.timezone,
     this.language,
+    this.rawValue,
   });
+
+  /// Creates an address from a raw (unstructured) string.
+  ///
+  /// Use this when you have a plain string address that doesn't follow
+  /// the structured vCard format.
+  ///
+  /// Example:
+  /// ```dart
+  /// final addr = Address.raw('123 Main St, San Francisco, CA 94102');
+  /// ```
+  const Address.raw(
+    String value, {
+    this.types = const [],
+    this.pref,
+    this.label,
+    this.geo,
+    this.timezone,
+    this.language,
+  })  : poBox = '',
+        extended = '',
+        street = '',
+        city = '',
+        region = '',
+        postalCode = '',
+        country = '',
+        rawValue = value;
 
   /// Creates an address from a list of components.
   ///
@@ -127,8 +169,73 @@ class Address {
     );
   }
 
-  /// Whether all address components are empty.
+  /// Creates an address from a value string, auto-detecting format.
+  ///
+  /// If the value contains semicolons, it's treated as structured data.
+  /// Otherwise, it's stored as a raw value.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Structured format (with semicolons)
+  /// final structured = Address.fromValue(';;123 Main St;City;ST;12345;USA');
+  /// print(structured.isStructured); // true
+  ///
+  /// // Raw format (without semicolons)
+  /// final raw = Address.fromValue('123 Main St, City, ST 12345');
+  /// print(raw.isRaw); // true
+  /// ```
+  factory Address.fromValue(
+    String value, {
+    List<String> types = const [],
+    int? pref,
+    String? label,
+    GeoLocation? geo,
+    String? timezone,
+    String? language,
+  }) {
+    if (value.contains(';')) {
+      // Structured format - parse components
+      final components = value.split(';');
+      return Address.fromComponents(
+        components,
+        types: types,
+        pref: pref,
+        label: label,
+        geo: geo,
+        timezone: timezone,
+        language: language,
+      );
+    } else if (value.trim().isNotEmpty) {
+      // Raw format - store as-is
+      return Address.raw(
+        value,
+        types: types,
+        pref: pref,
+        label: label,
+        geo: geo,
+        timezone: timezone,
+        language: language,
+      );
+    }
+    return Address(
+      types: types,
+      pref: pref,
+      label: label,
+      geo: geo,
+      timezone: timezone,
+      language: language,
+    );
+  }
+
+  /// Whether this address is stored as a raw value.
+  bool get isRaw => rawValue != null;
+
+  /// Whether this address has structured components.
+  bool get isStructured => !isRaw;
+
+  /// Whether all address components are empty (including raw value).
   bool get isEmpty =>
+      (rawValue == null || rawValue!.isEmpty) &&
       poBox.isEmpty &&
       extended.isEmpty &&
       street.isEmpty &&
@@ -137,7 +244,7 @@ class Address {
       postalCode.isEmpty &&
       country.isEmpty;
 
-  /// Whether any address component is non-empty.
+  /// Whether any address component is non-empty (including raw value).
   bool get isNotEmpty => !isEmpty;
 
   /// Whether this is a work address.
@@ -155,12 +262,34 @@ class Address {
   bool get isPostal => types.any((t) => t.toLowerCase() == 'postal');
 
   /// Converts to a list of components for serialization.
+  ///
+  /// If this is a raw value, returns a single-element list with the raw string.
   List<String> toComponents() {
+    if (rawValue != null) {
+      return [rawValue!];
+    }
     return [poBox, extended, street, city, region, postalCode, country];
   }
 
+  /// Returns the value for serialization.
+  ///
+  /// If this is a raw value, returns the raw string.
+  /// Otherwise, returns the semicolon-separated components.
+  String toValue() {
+    if (rawValue != null) {
+      return rawValue!;
+    }
+    return toComponents().join(';');
+  }
+
   /// Returns a formatted address string.
+  ///
+  /// If this is a raw value, returns the raw string.
+  /// Otherwise, constructs the formatted address from components.
   String toFormattedString({String separator = '\n'}) {
+    if (rawValue != null) {
+      return rawValue!;
+    }
     final parts = <String>[];
     if (street.isNotEmpty) parts.add(street);
     if (extended.isNotEmpty) parts.add(extended);
@@ -177,6 +306,19 @@ class Address {
   }
 
   /// Creates a copy with optional modifications.
+  ///
+  /// Set [clearRaw] to true to remove the raw value and convert to structured format.
+  ///
+  /// Example:
+  /// ```dart
+  /// final raw = Address.raw('123 Main St');
+  /// final structured = raw.copyWith(
+  ///   clearRaw: true,
+  ///   street: '123 Main St',
+  ///   city: 'San Francisco',
+  /// );
+  /// print(structured.isStructured); // true
+  /// ```
   Address copyWith({
     String? poBox,
     String? extended,
@@ -191,6 +333,8 @@ class Address {
     GeoLocation? geo,
     String? timezone,
     String? language,
+    String? rawValue,
+    bool clearRaw = false,
   }) {
     return Address(
       poBox: poBox ?? this.poBox,
@@ -206,7 +350,67 @@ class Address {
       geo: geo ?? this.geo,
       timezone: timezone ?? this.timezone,
       language: language ?? this.language,
+      rawValue: clearRaw ? null : (rawValue ?? this.rawValue),
     );
+  }
+
+  /// Converts a raw value to structured format by attempting to parse it.
+  ///
+  /// If this is already structured, returns this.
+  /// If this is raw, attempts to parse the raw value intelligently.
+  Address toStructured() {
+    if (!isRaw || rawValue == null) {
+      return this;
+    }
+
+    // Try to parse common address patterns
+    // This is a best-effort attempt to parse unstructured addresses
+    final value = rawValue!.trim();
+
+    // Try comma-separated format: "123 Main St, City, State ZIP, Country"
+    final parts = value.split(',').map((s) => s.trim()).toList();
+
+    if (parts.length >= 4) {
+      // Assume: street, city, state/zip, country
+      final stateZip = parts[2].split(RegExp(r'\s+'));
+      return Address(
+        street: parts[0],
+        city: parts[1],
+        region: stateZip.isNotEmpty ? stateZip[0] : '',
+        postalCode: stateZip.length > 1 ? stateZip.sublist(1).join(' ') : '',
+        country: parts.length > 3 ? parts.sublist(3).join(', ') : '',
+        types: types,
+        pref: pref,
+        label: label,
+        geo: geo,
+        timezone: timezone,
+        language: language,
+      );
+    } else if (parts.length >= 2) {
+      // Minimal: street, city (and maybe more)
+      return Address(
+        street: parts[0],
+        city: parts.length > 1 ? parts[1] : '',
+        region: parts.length > 2 ? parts[2] : '',
+        types: types,
+        pref: pref,
+        label: label,
+        geo: geo,
+        timezone: timezone,
+        language: language,
+      );
+    } else {
+      // Single part - treat as street
+      return Address(
+        street: value,
+        types: types,
+        pref: pref,
+        label: label,
+        geo: geo,
+        timezone: timezone,
+        language: language,
+      );
+    }
   }
 
   @override
@@ -216,6 +420,9 @@ class Address {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! Address) return false;
+    if (rawValue != null || other.rawValue != null) {
+      return rawValue == other.rawValue;
+    }
     return poBox == other.poBox &&
         extended == other.extended &&
         street == other.street &&
@@ -226,8 +433,13 @@ class Address {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(poBox, extended, street, city, region, postalCode, country);
+  int get hashCode {
+    if (rawValue != null) {
+      return rawValue.hashCode;
+    }
+    return Object.hash(
+        poBox, extended, street, city, region, postalCode, country);
+  }
 }
 
 /// Represents a geographic location (GEO property).

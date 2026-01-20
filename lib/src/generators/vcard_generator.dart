@@ -409,6 +409,10 @@ class VCardGenerator {
   }
 
   String _formatStructuredName(StructuredName name, VCardVersion version) {
+    // If it's a raw value, return it escaped
+    if (name.isRaw && name.rawValue != null) {
+      return _escape(name.rawValue!, version);
+    }
     final components = name.toComponents();
     return components.map((c) => _escape(c, version)).join(';');
   }
@@ -437,8 +441,14 @@ class VCardGenerator {
       }
     }
 
-    final components = addr.toComponents();
-    final value = components.map((c) => _escape(c, version)).join(';');
+    // If it's a raw value, return it escaped
+    String value;
+    if (addr.isRaw && addr.rawValue != null) {
+      value = _escape(addr.rawValue!, version);
+    } else {
+      final components = addr.toComponents();
+      value = components.map((c) => _escape(c, version)).join(';');
+    }
     return _formatProperty(
       PropertyName.adr,
       value,
@@ -498,8 +508,14 @@ class VCardGenerator {
       params.add(VCardParameter.single(ParameterName.sortAs, org.sortAs!));
     }
 
-    final components = org.toComponents();
-    final value = components.map((c) => _escape(c, version)).join(';');
+    // If it's a raw value, return it escaped
+    String value;
+    if (org.isRaw && org.rawValue != null) {
+      value = _escape(org.rawValue!, version);
+    } else {
+      final components = org.toComponents();
+      value = components.map((c) => _escape(c, version)).join(';');
+    }
     return _formatProperty(
       PropertyName.org,
       value,

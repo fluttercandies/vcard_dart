@@ -143,6 +143,51 @@ final vcard = VCard()
   ..categories = ['Colleague', 'Tech', 'VIP'];
 ```
 
+### Raw Value Support (Non-Compliant vCards)
+
+The library supports parsing and generating vCards with unstructured property values for better compatibility with non-compliant data:
+
+```dart
+// Create from raw (unstructured) values
+final rawName = StructuredName.raw('John Doe');
+print(rawName.isRaw); // true
+
+final rawAddress = Address.raw('123 Main St, San Francisco, CA 94102');
+print(rawAddress.isRaw); // true
+
+final rawOrg = Organization.raw('Acme Inc. - Engineering');
+print(rawOrg.isRaw); // true
+
+// Auto-detect format from value string
+final autoName = StructuredName.fromValue('Doe;John;;;'); // structured
+final rawAutoName = StructuredName.fromValue('John Doe'); // raw
+
+// Convert raw to structured
+final parsedName = rawName.toStructured();
+print(parsedName.family); // Doe
+print(parsedName.given); // John
+
+// Use with vCard
+final vcard = VCard()
+  ..formattedName = 'Jane Smith'
+  ..name = StructuredName.raw('Jane Smith'); // For non-compliant sources
+
+// Parser automatically handles both formats
+const nonCompliantVcard = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:Bob Johnson
+N:Bob Johnson
+ADR:123 Main St, City, State 12345
+ORG:Acme Corporation
+END:VCARD
+''';
+
+final vcard = parser.parseSingle(nonCompliantVcard);
+print(vcard.name.isRaw); // true
+print(vcard.name.rawValue); // "Bob Johnson"
+```
+
 ### Parsing vCards
 
 ```dart

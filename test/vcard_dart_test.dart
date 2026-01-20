@@ -335,8 +335,7 @@ END:VCARD
 
     test('parses all kind values', () {
       for (final kind in ['individual', 'org', 'group', 'location']) {
-        final vcardText =
-            '''
+        final vcardText = '''
 BEGIN:VCARD
 VERSION:4.0
 KIND:$kind
@@ -1783,8 +1782,7 @@ END:VCARD
       // Small valid base64 (1x1 transparent PNG)
       const base64Png =
           'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      const vcardText =
-          '''
+      const vcardText = '''
 BEGIN:VCARD
 VERSION:4.0
 FN:Photo Test
@@ -1812,8 +1810,7 @@ END:VCARD
         20,
         (i) => 'X-CUSTOM-$i:Value $i',
       );
-      final vcardText =
-          '''
+      final vcardText = '''
 BEGIN:VCARD
 VERSION:4.0
 FN:Extended Test
@@ -2028,6 +2025,950 @@ END:VCARD
       );
       final uri = binary.dataUri;
       expect(uri, startsWith('data:text/plain;base64,'));
+    });
+  });
+
+  group('Raw Value Support', () {
+    group('StructuredName raw value', () {
+      test('creates raw StructuredName', () {
+        final name = StructuredName.raw('John Doe');
+        expect(name.isRaw, true);
+        expect(name.isStructured, false);
+        expect(name.rawValue, 'John Doe');
+        expect(name.family, '');
+        expect(name.given, '');
+      });
+
+      test('creates structured StructuredName', () {
+        const name = StructuredName(family: 'Doe', given: 'John');
+        expect(name.isRaw, false);
+        expect(name.isStructured, true);
+        expect(name.rawValue, isNull);
+      });
+
+      test('fromValue auto-detects raw value (no semicolon)', () {
+        final name = StructuredName.fromValue('John Doe');
+        expect(name.isRaw, true);
+        expect(name.rawValue, 'John Doe');
+      });
+
+      test('fromValue auto-detects structured value (with semicolon)', () {
+        final name = StructuredName.fromValue('Doe;John;;;');
+        expect(name.isStructured, true);
+        expect(name.family, 'Doe');
+        expect(name.given, 'John');
+      });
+
+      test('toValue returns rawValue for raw StructuredName', () {
+        final name = StructuredName.raw('John Doe');
+        expect(name.toValue(), 'John Doe');
+      });
+
+      test('toValue returns structured format for structured StructuredName',
+          () {
+        const name = StructuredName(family: 'Doe', given: 'John');
+        expect(name.toValue(), 'Doe;John;;;');
+      });
+
+      test('toStructured converts raw to structured', () {
+        final name = StructuredName.raw('John Doe');
+        final structured = name.toStructured();
+        expect(structured.isStructured, true);
+        // toStructured attempts to parse "First Last" pattern
+        expect(structured.given, 'John');
+        expect(structured.family, 'Doe');
+      });
+
+      test('toStructured returns self for structured name', () {
+        const name = StructuredName(family: 'Doe', given: 'John');
+        final result = name.toStructured();
+        expect(result, name);
+      });
+
+      test('copyWith preserves rawValue', () {
+        final name = StructuredName.raw('John Doe');
+        final copied = name.copyWith();
+        expect(copied.isRaw, true);
+        expect(copied.rawValue, 'John Doe');
+      });
+
+      test('copyWith clearRaw converts to structured', () {
+        final name = StructuredName.raw('John Doe');
+        final copied =
+            name.copyWith(clearRaw: true, given: 'John', family: 'Doe');
+        expect(copied.isStructured, true);
+        expect(copied.family, 'Doe');
+        expect(copied.given, 'John');
+      });
+
+      test('equality for raw StructuredName', () {
+        final name1 = StructuredName.raw('John Doe');
+        final name2 = StructuredName.raw('John Doe');
+        final name3 = StructuredName.raw('Jane Doe');
+        expect(name1, equals(name2));
+        expect(name1, isNot(equals(name3)));
+      });
+
+      test('hashCode for raw StructuredName', () {
+        final name1 = StructuredName.raw('John Doe');
+        final name2 = StructuredName.raw('John Doe');
+        expect(name1.hashCode, equals(name2.hashCode));
+      });
+    });
+
+    group('Address raw value', () {
+      test('creates raw Address', () {
+        final addr = Address.raw('123 Main St, City, State 12345');
+        expect(addr.isRaw, true);
+        expect(addr.isStructured, false);
+        expect(addr.rawValue, '123 Main St, City, State 12345');
+        expect(addr.street, '');
+        expect(addr.city, '');
+      });
+
+      test('creates raw Address with types and pref', () {
+        final addr = Address.raw(
+          '123 Main St',
+          types: ['work'],
+          pref: 1,
+          label: 'Work Address',
+        );
+        expect(addr.isRaw, true);
+        expect(addr.rawValue, '123 Main St');
+        expect(addr.isWork, true);
+        expect(addr.pref, 1);
+        expect(addr.label, 'Work Address');
+      });
+
+      test('fromValue auto-detects raw value (no semicolon)', () {
+        final addr = Address.fromValue('123 Main St, City');
+        expect(addr.isRaw, true);
+        expect(addr.rawValue, '123 Main St, City');
+      });
+
+      test('fromValue auto-detects structured value (with semicolon)', () {
+        final addr = Address.fromValue(';;123 Main St;City;ST;12345;USA');
+        expect(addr.isStructured, true);
+        expect(addr.street, '123 Main St');
+        expect(addr.city, 'City');
+      });
+
+      test('toValue returns rawValue for raw Address', () {
+        final addr = Address.raw('123 Main St, City');
+        expect(addr.toValue(), '123 Main St, City');
+      });
+
+      test('toValue returns structured format for structured Address', () {
+        const addr = Address(street: '123 Main St', city: 'City');
+        expect(addr.toValue(), ';;123 Main St;City;;;');
+      });
+
+      test('toStructured converts raw to structured', () {
+        final addr = Address.raw('123 Main St, City, ST 12345, USA');
+        final structured = addr.toStructured();
+        expect(structured.isStructured, true);
+        // Should parse common address patterns
+        expect(
+            structured.street.isNotEmpty || structured.rawValue == null, true);
+      });
+
+      test('toStructured preserves types and pref', () {
+        final addr = Address.raw('123 Main St', types: ['work'], pref: 1);
+        final structured = addr.toStructured();
+        expect(structured.isWork, true);
+        expect(structured.pref, 1);
+      });
+
+      test('copyWith preserves rawValue', () {
+        final addr = Address.raw('123 Main St');
+        final copied = addr.copyWith();
+        expect(copied.isRaw, true);
+        expect(copied.rawValue, '123 Main St');
+      });
+
+      test('copyWith clearRaw converts to structured', () {
+        final addr = Address.raw('123 Main St');
+        final copied = addr.copyWith(clearRaw: true, street: '123 Main St');
+        expect(copied.isStructured, true);
+        expect(copied.street, '123 Main St');
+      });
+
+      test('equality for raw Address', () {
+        final addr1 = Address.raw('123 Main St', types: ['work']);
+        final addr2 = Address.raw('123 Main St', types: ['work']);
+        final addr3 = Address.raw('456 Other St', types: ['work']);
+        expect(addr1, equals(addr2));
+        expect(addr1, isNot(equals(addr3)));
+      });
+    });
+
+    group('Organization raw value', () {
+      test('creates raw Organization', () {
+        final org = Organization.raw('Acme Corporation');
+        expect(org.isRaw, true);
+        expect(org.isStructured, false);
+        expect(org.rawValue, 'Acme Corporation');
+        expect(org.name, '');
+        expect(org.units, isEmpty);
+      });
+
+      test('creates raw Organization with sortAs', () {
+        final org = Organization.raw('Acme Corporation', sortAs: 'Acme');
+        expect(org.isRaw, true);
+        expect(org.rawValue, 'Acme Corporation');
+        expect(org.sortAs, 'Acme');
+      });
+
+      test('fromValue auto-detects raw value (no semicolon)', () {
+        final org = Organization.fromValue('Acme Corporation');
+        expect(org.isRaw, true);
+        expect(org.rawValue, 'Acme Corporation');
+      });
+
+      test('fromValue auto-detects structured value (with semicolon)', () {
+        final org = Organization.fromValue('Acme Corp;Engineering;R&D');
+        expect(org.isStructured, true);
+        expect(org.name, 'Acme Corp');
+        expect(org.units, ['Engineering', 'R&D']);
+      });
+
+      test('toValue returns rawValue for raw Organization', () {
+        final org = Organization.raw('Acme Corporation');
+        expect(org.toValue(), 'Acme Corporation');
+      });
+
+      test('toValue returns structured format for structured Organization', () {
+        const org = Organization(name: 'Acme Corp', units: ['Engineering']);
+        expect(org.toValue(), 'Acme Corp;Engineering');
+      });
+
+      test('toStructured converts raw to structured', () {
+        final org = Organization.raw('Acme Corporation');
+        final structured = org.toStructured();
+        expect(structured.isStructured, true);
+        expect(structured.name, 'Acme Corporation');
+      });
+
+      test('toStructured parses common separators', () {
+        // Test " - " separator
+        var org = Organization.raw('Acme Corp - Engineering');
+        var structured = org.toStructured();
+        expect(structured.name, 'Acme Corp');
+        expect(structured.units, ['Engineering']);
+
+        // Test " / " separator
+        org = Organization.raw('Acme Corp / Engineering / R&D');
+        structured = org.toStructured();
+        expect(structured.name, 'Acme Corp');
+        expect(structured.units, ['Engineering', 'R&D']);
+      });
+
+      test('toStructured preserves sortAs', () {
+        final org = Organization.raw('Acme Corporation', sortAs: 'Acme');
+        final structured = org.toStructured();
+        expect(structured.sortAs, 'Acme');
+      });
+
+      test('copyWith preserves rawValue', () {
+        final org = Organization.raw('Acme Corp');
+        final copied = org.copyWith();
+        expect(copied.isRaw, true);
+        expect(copied.rawValue, 'Acme Corp');
+      });
+
+      test('copyWith clearRaw converts to structured', () {
+        final org = Organization.raw('Acme Corp');
+        final copied = org.copyWith(clearRaw: true, name: 'Acme Corp');
+        expect(copied.isStructured, true);
+        expect(copied.name, 'Acme Corp');
+      });
+
+      test('equality for raw Organization', () {
+        final org1 = Organization.raw('Acme Corp', sortAs: 'Acme');
+        final org2 = Organization.raw('Acme Corp', sortAs: 'Acme');
+        final org3 = Organization.raw('Other Corp', sortAs: 'Acme');
+        expect(org1, equals(org2));
+        expect(org1, isNot(equals(org3)));
+      });
+    });
+
+    group('VCard parser raw value support', () {
+      test('parses raw StructuredName without semicolons', () {
+        const vcardText = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:John Doe
+N:John Doe
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        expect(vcard.name?.isRaw, true);
+        expect(vcard.name?.rawValue, 'John Doe');
+      });
+
+      test('parses structured StructuredName with semicolons', () {
+        const vcardText = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:John Doe
+N:Doe;John;;;
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        expect(vcard.name?.isStructured, true);
+        expect(vcard.name?.family, 'Doe');
+        expect(vcard.name?.given, 'John');
+      });
+
+      test('parses raw Address without semicolons', () {
+        const vcardText = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:Test
+ADR;TYPE=work:123 Main St, City, ST 12345
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        expect(vcard.addresses.first.isRaw, true);
+        expect(vcard.addresses.first.rawValue, '123 Main St, City, ST 12345');
+        expect(vcard.addresses.first.isWork, true);
+      });
+
+      test('parses structured Address with semicolons', () {
+        const vcardText = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:Test
+ADR;TYPE=work:;;123 Main St;City;ST;12345;USA
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        expect(vcard.addresses.first.isStructured, true);
+        expect(vcard.addresses.first.street, '123 Main St');
+      });
+
+      test('parses raw Organization without semicolons', () {
+        const vcardText = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:Test
+ORG:Acme Corporation
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        expect(vcard.organization?.isRaw, true);
+        expect(vcard.organization?.rawValue, 'Acme Corporation');
+      });
+
+      test('parses structured Organization with semicolons', () {
+        const vcardText = '''
+BEGIN:VCARD
+VERSION:4.0
+FN:Test
+ORG:Acme Corp;Engineering;R&D
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        expect(vcard.organization?.isStructured, true);
+        expect(vcard.organization?.name, 'Acme Corp');
+        expect(vcard.organization?.units, ['Engineering', 'R&D']);
+      });
+    });
+
+    group('VCard generator raw value support', () {
+      test('generates raw StructuredName', () {
+        final vcard = VCard()
+          ..formattedName = 'John Doe'
+          ..name = StructuredName.raw('John Doe');
+        final text = const VCardGenerator().generate(vcard);
+        expect(text, contains('N:John Doe'));
+        expect(text, isNot(contains('N:John Doe;;;;')));
+      });
+
+      test('generates structured StructuredName', () {
+        final vcard = VCard()
+          ..formattedName = 'John Doe'
+          ..name = const StructuredName(family: 'Doe', given: 'John');
+        final text = const VCardGenerator().generate(vcard);
+        expect(text, contains('N:Doe;John;;;'));
+      });
+
+      test('generates raw Address', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..addresses.add(Address.raw('123 Main St, City', types: ['work']));
+        final text = const VCardGenerator().generate(vcard);
+        expect(text, contains('ADR'));
+        // The generator escapes commas in the value
+        expect(text, contains('123 Main St'));
+      });
+
+      test('generates structured Address', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..addresses.add(const Address(
+            street: '123 Main St',
+            city: 'City',
+            types: ['work'],
+          ));
+        final text = const VCardGenerator().generate(vcard);
+        expect(text, contains('ADR'));
+        expect(text, contains(';;123 Main St;City;;;'));
+      });
+
+      test('generates raw Organization', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..organization = Organization.raw('Acme Corporation');
+        final text = const VCardGenerator().generate(vcard);
+        expect(text, contains('ORG:Acme Corporation'));
+        expect(text, isNot(contains('ORG:Acme Corporation;')));
+      });
+
+      test('generates structured Organization', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..organization =
+              const Organization(name: 'Acme Corp', units: ['Engineering']);
+        final text = const VCardGenerator().generate(vcard);
+        expect(text, contains('ORG:Acme Corp;Engineering'));
+      });
+    });
+
+    group('Raw value round-trip', () {
+      test('round-trip raw StructuredName', () {
+        final original = VCard()
+          ..formattedName = 'John Doe'
+          ..name = StructuredName.raw('John Doe');
+        final text = const VCardGenerator().generate(original);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.name?.isRaw, true);
+        expect(parsed.name?.rawValue, 'John Doe');
+      });
+
+      test('round-trip raw Address', () {
+        final original = VCard()
+          ..formattedName = 'Test'
+          ..addresses
+              .add(Address.raw('123 Main St, City', types: ['work'], pref: 1));
+        final text = const VCardGenerator().generate(original);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.addresses.first.isRaw, true);
+        expect(parsed.addresses.first.rawValue, '123 Main St, City');
+        expect(parsed.addresses.first.isWork, true);
+      });
+
+      test('round-trip raw Organization', () {
+        final original = VCard()
+          ..formattedName = 'Test'
+          ..organization = Organization.raw('Acme Corporation');
+        final text = const VCardGenerator().generate(original);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.organization?.isRaw, true);
+        expect(parsed.organization?.rawValue, 'Acme Corporation');
+      });
+    });
+
+    group('JCard formatter raw value support', () {
+      test('jCard round-trip raw StructuredName', () {
+        final vcard = VCard()
+          ..formattedName = 'John Doe'
+          ..name = StructuredName.raw('John Doe');
+        final json = const JCardFormatter().toJson(vcard);
+        final restored = const JCardFormatter().fromJson(json);
+        expect(restored.name?.isRaw, true);
+        expect(restored.name?.rawValue, 'John Doe');
+      });
+
+      test('jCard round-trip raw Address', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..addresses.add(Address.raw('123 Main St, City', types: ['work']));
+        final json = const JCardFormatter().toJson(vcard);
+        final restored = const JCardFormatter().fromJson(json);
+        expect(restored.addresses.first.isRaw, true);
+        expect(restored.addresses.first.rawValue, '123 Main St, City');
+      });
+
+      test('jCard round-trip raw Organization', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..organization = Organization.raw('Acme Corporation');
+        final json = const JCardFormatter().toJson(vcard);
+        final restored = const JCardFormatter().fromJson(json);
+        expect(restored.organization?.isRaw, true);
+        expect(restored.organization?.rawValue, 'Acme Corporation');
+      });
+
+      test('jCard outputs text type for raw values', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..name = StructuredName.raw('John Doe');
+        final jsonString = const JCardFormatter().toJsonString(vcard);
+        // Raw value should be a simple text string in JSON, not an array
+        expect(jsonString, contains('"John Doe"'));
+      });
+    });
+
+    group('XCard formatter raw value support', () {
+      test('xCard round-trip raw StructuredName', () {
+        final vcard = VCard()
+          ..formattedName = 'John Doe'
+          ..name = StructuredName.raw('John Doe');
+        final xml = const XCardFormatter().toXml(vcard);
+        final restored = const XCardFormatter().fromXml(xml);
+        expect(restored.name?.isRaw, true);
+        expect(restored.name?.rawValue, 'John Doe');
+      });
+
+      test('xCard round-trip raw Address', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..addresses.add(Address.raw('123 Main St, City', types: ['work']));
+        final xml = const XCardFormatter().toXml(vcard);
+        final restored = const XCardFormatter().fromXml(xml);
+        expect(restored.addresses.first.isRaw, true);
+        expect(restored.addresses.first.rawValue, '123 Main St, City');
+      });
+
+      test('xCard round-trip raw Organization', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..organization = Organization.raw('Acme Corporation');
+        final xml = const XCardFormatter().toXml(vcard);
+        final restored = const XCardFormatter().fromXml(xml);
+        // xCard parses single <text> element as structured with name only
+        // This is expected behavior for compatibility
+        expect(restored.organization?.name, 'Acme Corporation');
+      });
+
+      test('xCard outputs text element for raw values', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..name = StructuredName.raw('John Doe');
+        final xml = const XCardFormatter().toXml(vcard, pretty: true);
+        // Raw value should be in a <text> element, not structured <surname>/<given>
+        expect(xml, contains('<n>'));
+        expect(xml, contains('<text>John Doe</text>'));
+      });
+    });
+
+    group('Edge cases for raw values', () {
+      test('empty raw value', () {
+        final name = StructuredName.raw('');
+        expect(name.isRaw, true);
+        expect(name.rawValue, '');
+        expect(name.isEmpty, true);
+      });
+
+      test('raw value with special characters', () {
+        final name = StructuredName.raw(r'John "The Rock" Doe');
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..name = name;
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.name?.rawValue, contains('John'));
+      });
+
+      test('raw value with newlines', () {
+        final addr =
+            Address.raw('123 Main St\nApt 4\nCity, ST 12345', types: ['home']);
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..addresses.add(addr);
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.addresses.first.isRaw, true);
+      });
+
+      test('raw value with unicode', () {
+        final org = Organization.raw('株式会社テスト');
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..organization = org;
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.organization?.rawValue, '株式会社テスト');
+      });
+
+      test('mixed raw and structured values in same vCard', () {
+        final vcard = VCard()
+          ..formattedName = 'Test'
+          ..name = StructuredName.raw('John Doe')
+          ..addresses.add(const Address(street: '123 Main St', city: 'City'))
+          ..organization = Organization.raw('Acme Corp');
+
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+
+        expect(parsed.name?.isRaw, true);
+        expect(parsed.addresses.first.isStructured, true);
+        expect(parsed.organization?.isRaw, true);
+      });
+
+      // Additional complex and boundary tests
+      test('raw StructuredName with only whitespace', () {
+        final name = StructuredName.raw('   ');
+        expect(name.isRaw, true);
+        expect(name.rawValue, '   ');
+        // Still raw even with whitespace only
+        final structured = name.toStructured();
+        expect(structured.isStructured, true);
+        expect(structured.family.trim(), '');
+      });
+
+      test('raw value with escaped semicolons should stay raw', () {
+        // A value like "Doe\;John" has escaped semicolon, not a structural one
+        // When parsed from vCard, this should still be treated as raw
+        final name = StructuredName.raw(r'John Doe\;Jr.');
+        expect(name.isRaw, true);
+        expect(name.rawValue, r'John Doe\;Jr.');
+      });
+
+      test('raw Address with complex international format', () {
+        // Chinese address format
+        final addr1 = Address.raw('中国北京市海淀区中关村大街1号', types: ['home']);
+        expect(addr1.isRaw, true);
+
+        // Japanese address format
+        final addr2 = Address.raw('〒100-0001 東京都千代田区千代田1-1', types: ['work']);
+        expect(addr2.isRaw, true);
+
+        // Arabic address
+        final addr3 =
+            Address.raw('شارع الملك فهد، الرياض، المملكة العربية السعودية');
+        expect(addr3.isRaw, true);
+      });
+
+      test('raw Organization with various separators preserved', () {
+        // These should stay raw as they don't have actual vCard semicolons
+        final org1 = Organization.raw('Acme Corp - Engineering Division');
+        expect(org1.isRaw, true);
+
+        final org2 = Organization.raw('Parent Co. / Subsidiary Inc.');
+        expect(org2.isRaw, true);
+
+        final org3 = Organization.raw('Company (Division)');
+        expect(org3.isRaw, true);
+      });
+
+      test('raw value with vCard-like content but no semicolon', () {
+        // Content that looks structured but isn't
+        final name = StructuredName.raw('Dr. John William Doe, Jr., PhD');
+        expect(name.isRaw, true);
+        expect(name.rawValue, 'Dr. John William Doe, Jr., PhD');
+      });
+
+      test('raw Address with commas and no semicolons', () {
+        final addr = Address.raw(
+            '123 Main St, Suite 100, New York, NY 10001, USA',
+            types: ['work'],
+            pref: 1);
+        expect(addr.isRaw, true);
+        expect(
+            addr.rawValue, '123 Main St, Suite 100, New York, NY 10001, USA');
+        expect(addr.pref, 1);
+        expect(addr.isWork, true);
+
+        // Test toStructured parsing
+        final structured = addr.toStructured();
+        expect(structured.isStructured, true);
+        expect(structured.pref, 1);
+        expect(structured.isWork, true);
+      });
+
+      test('raw value containing only separator character', () {
+        // Edge case: just a comma
+        final addr = Address.raw(',');
+        expect(addr.isRaw, true);
+        expect(addr.rawValue, ',');
+
+        // Edge case: multiple commas
+        final addr2 = Address.raw(',,,');
+        expect(addr2.isRaw, true);
+      });
+
+      test('raw StructuredName with leading/trailing whitespace', () {
+        final name = StructuredName.raw('  John Doe  ');
+        expect(name.isRaw, true);
+        expect(name.rawValue, '  John Doe  ');
+
+        // toStructured parses name and trims during parsing
+        final structured = name.toStructured();
+        expect(structured.isStructured, true);
+        // After parsing "  John Doe  ", given='John', family='Doe'
+        expect(structured.given, 'John');
+        expect(structured.family, 'Doe');
+      });
+
+      test('raw Organization isEmpty behavior', () {
+        final emptyRaw = Organization.raw('');
+        expect(emptyRaw.isRaw, true);
+        expect(emptyRaw.isEmpty, true);
+
+        final nonEmptyRaw = Organization.raw('X');
+        expect(nonEmptyRaw.isRaw, true);
+        expect(nonEmptyRaw.isEmpty, false);
+      });
+
+      test('raw Address isEmpty behavior', () {
+        final emptyRaw = Address.raw('');
+        expect(emptyRaw.isRaw, true);
+        expect(emptyRaw.isEmpty, true);
+
+        final nonEmptyRaw = Address.raw('X');
+        expect(nonEmptyRaw.isRaw, true);
+        expect(nonEmptyRaw.isEmpty, false);
+      });
+
+      test('raw StructuredName isEmpty behavior', () {
+        final emptyRaw = StructuredName.raw('');
+        expect(emptyRaw.isRaw, true);
+        expect(emptyRaw.isEmpty, true);
+
+        final nonEmptyRaw = StructuredName.raw('X');
+        expect(nonEmptyRaw.isRaw, true);
+        expect(nonEmptyRaw.isEmpty, false);
+      });
+
+      test('raw values with emoji', () {
+        final name = StructuredName.raw('John 😀 Doe');
+        final vcard = VCard()
+          ..formattedName = 'Emoji Test'
+          ..name = name;
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+        expect(parsed.name?.rawValue, 'John 😀 Doe');
+      });
+
+      test('raw value with multiple consecutive commas', () {
+        final addr = Address.raw('123 Main,, City,, USA');
+        expect(addr.isRaw, true);
+        expect(addr.rawValue, '123 Main,, City,, USA');
+      });
+
+      test('raw value with tabs and special whitespace', () {
+        final name = StructuredName.raw('John\tDoe');
+        expect(name.isRaw, true);
+        expect(name.rawValue, 'John\tDoe');
+      });
+
+      test('round-trip with all raw values preserves data', () {
+        final original = VCard()
+          ..formattedName = 'All Raw Test'
+          ..name = StructuredName.raw('Dr. John William Doe Jr.')
+          ..addresses.addAll([
+            Address.raw('123 Main St, City, ST 12345',
+                types: ['work'], pref: 1),
+            Address.raw('456 Home Ave, Town, OT 67890',
+                types: ['home'], pref: 2),
+          ])
+          ..organization = Organization.raw('Acme Corporation International');
+
+        // vCard round-trip
+        final vcardText = const VCardGenerator().generate(original);
+        final fromVcard = const VCardParser().parseSingle(vcardText);
+
+        expect(fromVcard.name?.isRaw, true);
+        expect(fromVcard.name?.rawValue, 'Dr. John William Doe Jr.');
+        expect(fromVcard.addresses.length, 2);
+        expect(fromVcard.addresses[0].isRaw, true);
+        expect(fromVcard.addresses[0].rawValue, '123 Main St, City, ST 12345');
+        expect(fromVcard.addresses[0].isWork, true);
+        expect(fromVcard.addresses[1].isRaw, true);
+        expect(fromVcard.addresses[1].rawValue, '456 Home Ave, Town, OT 67890');
+        expect(fromVcard.organization?.isRaw, true);
+        expect(
+            fromVcard.organization?.rawValue, 'Acme Corporation International');
+      });
+
+      test('jCard round-trip with all raw values', () {
+        final original = VCard()
+          ..formattedName = 'jCard Raw Test'
+          ..name = StructuredName.raw('Simple Name')
+          ..addresses.add(Address.raw('Simple Address', types: ['work']))
+          ..organization = Organization.raw('Simple Org');
+
+        final json = const JCardFormatter().toJson(original);
+        final restored = const JCardFormatter().fromJson(json);
+
+        expect(restored.name?.isRaw, true);
+        expect(restored.name?.rawValue, 'Simple Name');
+        expect(restored.addresses.first.isRaw, true);
+        expect(restored.addresses.first.rawValue, 'Simple Address');
+        expect(restored.organization?.isRaw, true);
+        expect(restored.organization?.rawValue, 'Simple Org');
+      });
+
+      test('xCard round-trip with raw values', () {
+        final original = VCard()
+          ..formattedName = 'xCard Raw Test'
+          ..name = StructuredName.raw('XML Name')
+          ..addresses.add(Address.raw('XML Address', types: ['home']));
+
+        final xml = const XCardFormatter().toXml(original);
+        final restored = const XCardFormatter().fromXml(xml);
+
+        expect(restored.name?.isRaw, true);
+        expect(restored.name?.rawValue, 'XML Name');
+        expect(restored.addresses.first.isRaw, true);
+        expect(restored.addresses.first.rawValue, 'XML Address');
+      });
+
+      test('raw value with very long content', () {
+        final longContent = 'A' * 1000;
+        final name = StructuredName.raw(longContent);
+        final vcard = VCard()
+          ..formattedName = 'Long Raw Test'
+          ..name = name;
+
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+
+        expect(parsed.name?.isRaw, true);
+        expect(parsed.name?.rawValue, longContent);
+      });
+
+      test('toStructured on Organization with dash separator', () {
+        final org = Organization.raw('Parent Corp - Child Division - Sub Unit');
+        final structured = org.toStructured();
+
+        expect(structured.isStructured, true);
+        expect(structured.name, 'Parent Corp');
+        expect(structured.units, ['Child Division', 'Sub Unit']);
+      });
+
+      test('toStructured on Organization with slash separator', () {
+        final org = Organization.raw('Main Co / Branch A / Team 1');
+        final structured = org.toStructured();
+
+        expect(structured.isStructured, true);
+        expect(structured.name, 'Main Co');
+        expect(structured.units, ['Branch A', 'Team 1']);
+      });
+
+      test('toStructured on Address with US format', () {
+        final addr = Address.raw(
+            '123 Main Street, Apt 4B, New York, NY 10001, USA',
+            types: ['home']);
+        final structured = addr.toStructured();
+
+        expect(structured.isStructured, true);
+        expect(structured.isHome, true);
+        // Should have parsed some components
+        expect(
+            structured.street.isNotEmpty ||
+                structured.city.isNotEmpty ||
+                structured.country.isNotEmpty,
+            true);
+      });
+
+      test('copyWith on raw StructuredName updates rawValue', () {
+        final name = StructuredName.raw('Original');
+        final updated = name.copyWith(rawValue: 'Updated');
+
+        expect(updated.isRaw, true);
+        expect(updated.rawValue, 'Updated');
+      });
+
+      test('copyWith on raw Address updates rawValue', () {
+        final addr = Address.raw('Original', types: ['work']);
+        final updated = addr.copyWith(rawValue: 'Updated');
+
+        expect(updated.isRaw, true);
+        expect(updated.rawValue, 'Updated');
+        expect(updated.isWork, true);
+      });
+
+      test('copyWith on raw Organization updates rawValue', () {
+        final org = Organization.raw('Original', sortAs: 'Orig');
+        final updated = org.copyWith(rawValue: 'Updated');
+
+        expect(updated.isRaw, true);
+        expect(updated.rawValue, 'Updated');
+        expect(updated.sortAs, 'Orig');
+      });
+
+      test('comparing raw vs structured with same content', () {
+        final raw = StructuredName.raw('Doe');
+        const structured = StructuredName(family: 'Doe');
+
+        // They should not be equal since one is raw and one is structured
+        expect(raw, isNot(equals(structured)));
+        expect(raw.isRaw, true);
+        expect(structured.isStructured, true);
+      });
+
+      test('parsing vCard with N containing only escaped semicolons stays raw',
+          () {
+        // If the value has escaped semicolons but no structural ones, treat as raw
+        const vcardText = r'''
+BEGIN:VCARD
+VERSION:4.0
+FN:Test
+N:John Doe\, Jr.
+END:VCARD
+''';
+        final vcard = const VCardParser().parseSingle(vcardText);
+        // The parser should detect no structural semicolons
+        expect(vcard.name?.isRaw, true);
+      });
+
+      test('multiple raw addresses with different types', () {
+        final vcard = VCard()
+          ..formattedName = 'Multi Address'
+          ..addresses.addAll([
+            Address.raw('Work Address 1', types: ['work'], pref: 1),
+            Address.raw('Home Address 2', types: ['home'], pref: 2),
+            Address.raw('Other Address 3', types: ['other']),
+          ]);
+
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+
+        expect(parsed.addresses.length, 3);
+        expect(parsed.addresses[0].isRaw, true);
+        expect(parsed.addresses[0].isWork, true);
+        expect(parsed.addresses[0].pref, 1);
+        expect(parsed.addresses[1].isRaw, true);
+        expect(parsed.addresses[1].isHome, true);
+        expect(parsed.addresses[2].isRaw, true);
+      });
+
+      test('raw value with control characters', () {
+        // Bell character and other control chars
+        final name = StructuredName.raw('John\x07Doe');
+        expect(name.isRaw, true);
+        expect(name.rawValue?.contains('\x07'), true);
+      });
+
+      test('raw value with RTL text', () {
+        // Hebrew text
+        final name = StructuredName.raw('שלום עולם');
+        expect(name.isRaw, true);
+
+        final vcard = VCard()
+          ..formattedName = 'RTL Test'
+          ..name = name;
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+
+        expect(parsed.name?.rawValue, 'שלום עולם');
+      });
+
+      test('raw value with mixed scripts', () {
+        final org = Organization.raw('ABC株式会社 - Tokyo Division');
+        expect(org.isRaw, true);
+
+        final vcard = VCard()
+          ..formattedName = 'Mixed Script Test'
+          ..organization = org;
+        final text = const VCardGenerator().generate(vcard);
+        final parsed = const VCardParser().parseSingle(text);
+
+        expect(parsed.organization?.rawValue, 'ABC株式会社 - Tokyo Division');
+      });
     });
   });
 

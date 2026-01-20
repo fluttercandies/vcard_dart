@@ -285,6 +285,13 @@ class VCardParser {
 
   /// Parses a structured name (N property).
   StructuredName _parseStructuredName(String value) {
+    // Check if it's a raw value (no semicolons)
+    if (!value.contains(';')) {
+      if (value.trim().isNotEmpty) {
+        return StructuredName.raw(value);
+      }
+      return const StructuredName();
+    }
     final components = ValueEscaping.splitValue(value, ';');
     return StructuredName.fromComponents(
       components.map(ValueEscaping.unescape).toList(),
@@ -293,6 +300,28 @@ class VCardParser {
 
   /// Parses an address (ADR property).
   Address _parseAddress(VCardProperty prop, String value) {
+    // Check if it's a raw value (no semicolons)
+    if (!value.contains(';')) {
+      if (value.trim().isNotEmpty) {
+        return Address.raw(
+          value,
+          types: prop.parameters.types,
+          pref: prop.parameters.pref,
+          label: prop.parameters.getValue(ParameterName.label),
+          geo: _parseGeoParam(prop.parameters),
+          timezone: prop.parameters.getValue(ParameterName.timezone),
+          language: prop.parameters.language,
+        );
+      }
+      return Address(
+        types: prop.parameters.types,
+        pref: prop.parameters.pref,
+        label: prop.parameters.getValue(ParameterName.label),
+        geo: _parseGeoParam(prop.parameters),
+        timezone: prop.parameters.getValue(ParameterName.timezone),
+        language: prop.parameters.language,
+      );
+    }
     final components = ValueEscaping.splitValue(value, ';');
     return Address.fromComponents(
       components.map(ValueEscaping.unescape).toList(),
@@ -371,12 +400,19 @@ class VCardParser {
 
   /// Parses organization (ORG property).
   Organization _parseOrganization(String value, VCardParameters params) {
+    final sortAs = params.getValue(ParameterName.sortAs);
+    // Check if it's a raw value (no semicolons)
+    if (!value.contains(';')) {
+      if (value.trim().isNotEmpty) {
+        return Organization.raw(ValueEscaping.unescape(value), sortAs: sortAs);
+      }
+      return Organization(name: '', sortAs: sortAs);
+    }
     final components = ValueEscaping.splitValue(
       value,
       ';',
     ).map(ValueEscaping.unescape).toList();
-    final sortAs = params.getValue(ParameterName.sortAs);
-    return Organization.fromComponents(components).copyWith(sortAs: sortAs);
+    return Organization.fromComponents(components, sortAs: sortAs);
   }
 
   /// Parses RELATED property.
@@ -453,9 +489,9 @@ class VCardParser {
     VCardProperty prop,
     String value,
     T Function(dynamic data, String? mediaType, List<String> types, int? pref)
-    inlineFactory,
+        inlineFactory,
     T Function(String uri, String? mediaType, List<String> types, int? pref)
-    uriFactory,
+        uriFactory,
   ) {
     if (value.isEmpty) return null;
 

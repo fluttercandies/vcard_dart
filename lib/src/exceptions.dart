@@ -29,8 +29,8 @@ class VCardException implements Exception {
   String toString() {
     final location = line != null
         ? column != null
-              ? ' at line $line, column $column'
-              : ' at line $line'
+            ? ' at line $line, column $column'
+            : ' at line $line'
         : '';
     return 'VCardException: $message$location';
   }
@@ -66,8 +66,8 @@ class VCardParseException extends VCardException {
   String toString() {
     final location = line != null
         ? column != null
-              ? ' at line $line, column $column'
-              : ' at line $line'
+            ? ' at line $line, column $column'
+            : ' at line $line'
         : '';
     return 'VCardParseException: $message$location';
   }
@@ -91,7 +91,7 @@ class MissingPropertyException extends VCardException {
 
   /// Creates a new missing property exception.
   const MissingPropertyException(this.propertyName)
-    : super('Missing required property: $propertyName');
+      : super('Missing required property: $propertyName');
 
   @override
   String toString() =>
@@ -176,7 +176,7 @@ class UnsupportedVersionException extends VCardException {
 
   /// Creates a new unsupported version exception.
   const UnsupportedVersionException(this.versionString)
-    : super('Unsupported vCard version: $versionString');
+      : super('Unsupported vCard version: $versionString');
 
   @override
   String toString() =>
@@ -220,7 +220,7 @@ class FormatException extends VCardException {
 
   /// Creates a new format exception.
   const FormatException.format(this.format, String message, {int? line})
-    : super(message, line: line);
+      : super(message, line: line);
 
   @override
   String toString() => '$format FormatException: $message';

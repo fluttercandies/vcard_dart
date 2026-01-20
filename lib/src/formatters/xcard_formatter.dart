@@ -67,48 +67,60 @@ class XCardFormatter {
 
     // N
     if (vcard.name != null && vcard.name!.isNotEmpty) {
-      buffer.write('$indent$indent<n>$newline');
-      _writeElement(
-        buffer,
-        'surname',
-        null,
-        _escapeXml(vcard.name!.family),
-        indent: indent * 3,
-        newline: newline,
-      );
-      _writeElement(
-        buffer,
-        'given',
-        null,
-        _escapeXml(vcard.name!.given),
-        indent: indent * 3,
-        newline: newline,
-      );
-      _writeElement(
-        buffer,
-        'additional',
-        null,
-        _escapeXml(vcard.name!.additional.join(',')),
-        indent: indent * 3,
-        newline: newline,
-      );
-      _writeElement(
-        buffer,
-        'prefix',
-        null,
-        _escapeXml(vcard.name!.prefixes.join(',')),
-        indent: indent * 3,
-        newline: newline,
-      );
-      _writeElement(
-        buffer,
-        'suffix',
-        null,
-        _escapeXml(vcard.name!.suffixes.join(',')),
-        indent: indent * 3,
-        newline: newline,
-      );
-      buffer.write('$indent$indent</n>$newline');
+      if (vcard.name!.isRaw && vcard.name!.rawValue != null) {
+        // Raw value - output as single text element
+        _writeElement(
+          buffer,
+          'n',
+          'text',
+          _escapeXml(vcard.name!.rawValue!),
+          indent: indent * 2,
+          newline: newline,
+        );
+      } else {
+        buffer.write('$indent$indent<n>$newline');
+        _writeElement(
+          buffer,
+          'surname',
+          null,
+          _escapeXml(vcard.name!.family),
+          indent: indent * 3,
+          newline: newline,
+        );
+        _writeElement(
+          buffer,
+          'given',
+          null,
+          _escapeXml(vcard.name!.given),
+          indent: indent * 3,
+          newline: newline,
+        );
+        _writeElement(
+          buffer,
+          'additional',
+          null,
+          _escapeXml(vcard.name!.additional.join(',')),
+          indent: indent * 3,
+          newline: newline,
+        );
+        _writeElement(
+          buffer,
+          'prefix',
+          null,
+          _escapeXml(vcard.name!.prefixes.join(',')),
+          indent: indent * 3,
+          newline: newline,
+        );
+        _writeElement(
+          buffer,
+          'suffix',
+          null,
+          _escapeXml(vcard.name!.suffixes.join(',')),
+          indent: indent * 3,
+          newline: newline,
+        );
+        buffer.write('$indent$indent</n>$newline');
+      }
     }
 
     // NICKNAME
@@ -549,22 +561,39 @@ class XCardFormatter {
     ).firstMatch(content);
     if (nMatch != null) {
       final nContent = nMatch.group(1)!;
-      vcard.name = StructuredName(
-        family: _unescapeXml(_extractSimpleValue(nContent, 'surname') ?? ''),
-        given: _unescapeXml(_extractSimpleValue(nContent, 'given') ?? ''),
-        additional: (_extractSimpleValue(nContent, 'additional') ?? '')
-            .split(',')
-            .where((s) => s.isNotEmpty)
-            .toList(),
-        prefixes: (_extractSimpleValue(nContent, 'prefix') ?? '')
-            .split(',')
-            .where((s) => s.isNotEmpty)
-            .toList(),
-        suffixes: (_extractSimpleValue(nContent, 'suffix') ?? '')
-            .split(',')
-            .where((s) => s.isNotEmpty)
-            .toList(),
-      );
+      // Check if it's a raw value (just a <text> element, no structured components)
+      final hasStructuredComponents =
+          RegExp(r'<surname>|<given>|<additional>|<prefix>|<suffix>')
+              .hasMatch(nContent);
+      if (hasStructuredComponents) {
+        vcard.name = StructuredName(
+          family: _unescapeXml(_extractSimpleValue(nContent, 'surname') ?? ''),
+          given: _unescapeXml(_extractSimpleValue(nContent, 'given') ?? ''),
+          additional: (_extractSimpleValue(nContent, 'additional') ?? '')
+              .split(',')
+              .where((s) => s.isNotEmpty)
+              .toList(),
+          prefixes: (_extractSimpleValue(nContent, 'prefix') ?? '')
+              .split(',')
+              .where((s) => s.isNotEmpty)
+              .toList(),
+          suffixes: (_extractSimpleValue(nContent, 'suffix') ?? '')
+              .split(',')
+              .where((s) => s.isNotEmpty)
+              .toList(),
+        );
+      } else {
+        // Raw value - just a text element outside parameters
+        // Remove parameters section before extracting text
+        final contentWithoutParams = nContent.replaceAll(
+          RegExp(r'<parameters>.*?</parameters>', dotAll: true),
+          '',
+        );
+        final rawValue = _extractSimpleValue(contentWithoutParams, 'text');
+        if (rawValue != null && rawValue.isNotEmpty) {
+          vcard.name = StructuredName.raw(_unescapeXml(rawValue));
+        }
+      }
     }
 
     // Parse NICKNAME
@@ -620,23 +649,52 @@ class XCardFormatter {
     ).allMatches(content);
     for (final match in adrMatches) {
       final adrContent = match.group(1)!;
-      vcard.addresses.add(
-        Address(
-          poBox: _unescapeXml(_extractSimpleValue(adrContent, 'pobox') ?? ''),
-          extended: _unescapeXml(_extractSimpleValue(adrContent, 'ext') ?? ''),
-          street: _unescapeXml(_extractSimpleValue(adrContent, 'street') ?? ''),
-          city: _unescapeXml(_extractSimpleValue(adrContent, 'locality') ?? ''),
-          region: _unescapeXml(_extractSimpleValue(adrContent, 'region') ?? ''),
-          postalCode: _unescapeXml(
-            _extractSimpleValue(adrContent, 'code') ?? '',
+      final types = _extractTypes(adrContent);
+      final pref = _extractPref(adrContent);
+      // Check if it's a raw value (just a <text> element, no structured components)
+      final hasStructuredComponents =
+          RegExp(r'<pobox>|<ext>|<street>|<locality>|<region>|<code>|<country>')
+              .hasMatch(adrContent);
+      if (hasStructuredComponents) {
+        vcard.addresses.add(
+          Address(
+            poBox: _unescapeXml(_extractSimpleValue(adrContent, 'pobox') ?? ''),
+            extended:
+                _unescapeXml(_extractSimpleValue(adrContent, 'ext') ?? ''),
+            street:
+                _unescapeXml(_extractSimpleValue(adrContent, 'street') ?? ''),
+            city:
+                _unescapeXml(_extractSimpleValue(adrContent, 'locality') ?? ''),
+            region:
+                _unescapeXml(_extractSimpleValue(adrContent, 'region') ?? ''),
+            postalCode: _unescapeXml(
+              _extractSimpleValue(adrContent, 'code') ?? '',
+            ),
+            country: _unescapeXml(
+              _extractSimpleValue(adrContent, 'country') ?? '',
+            ),
+            types: types,
+            pref: pref,
           ),
-          country: _unescapeXml(
-            _extractSimpleValue(adrContent, 'country') ?? '',
-          ),
-          types: _extractTypes(adrContent),
-          pref: _extractPref(adrContent),
-        ),
-      );
+        );
+      } else {
+        // Raw value - just a text element outside parameters
+        // Remove parameters section before extracting text to avoid matching type values
+        final contentWithoutParams = adrContent.replaceAll(
+          RegExp(r'<parameters>.*?</parameters>', dotAll: true),
+          '',
+        );
+        final rawValue = _extractSimpleValue(contentWithoutParams, 'text');
+        if (rawValue != null && rawValue.isNotEmpty) {
+          vcard.addresses.add(
+            Address.raw(
+              _unescapeXml(rawValue),
+              types: types,
+              pref: pref,
+            ),
+          );
+        }
+      }
     }
 
     // Parse TEL
@@ -714,10 +772,15 @@ class XCardFormatter {
     if (orgMatch != null) {
       final orgContent = orgMatch.group(1)!;
       final texts = RegExp(r'<text>([^<]*)</text>').allMatches(orgContent);
-      final components = texts
-          .map((m) => _unescapeXml(m.group(1) ?? ''))
-          .toList();
+      final components =
+          texts.map((m) => _unescapeXml(m.group(1) ?? '')).toList();
       if (components.isNotEmpty) {
+        // Check if there's only one component - might be a raw value
+        // In xCard, org with multiple <text> elements represents structured org
+        // A single <text> element could be either:
+        // 1. A raw organization name
+        // 2. A structured org with just the company name
+        // We treat single-element as structured (name only) to be compatible
         vcard.organization = Organization.fromComponents(components);
       }
     }
@@ -868,6 +931,21 @@ class XCardFormatter {
     String indent = '',
     String newline = '',
   }) {
+    // Check if it's a raw value
+    if (addr.isRaw && addr.rawValue != null) {
+      _writeElement(
+        buffer,
+        'adr',
+        'text',
+        _escapeXml(addr.rawValue!),
+        types: addr.types,
+        pref: addr.pref,
+        indent: indent,
+        newline: newline,
+      );
+      return;
+    }
+
     buffer.write('$indent<adr>$newline');
 
     // Parameters
@@ -916,6 +994,26 @@ class XCardFormatter {
     String indent = '',
     String newline = '',
   }) {
+    // Check if it's a raw value
+    if (org.isRaw && org.rawValue != null) {
+      final params = <String, String>{};
+      if (org.sortAs != null) {
+        params['sort-as'] = org.sortAs!;
+      }
+      buffer.write('$indent<org>$newline');
+      if (org.sortAs != null) {
+        buffer.write('$indent  <parameters>$newline');
+        buffer.write(
+          '$indent    <sort-as><text>${_escapeXml(org.sortAs!)}</text></sort-as>$newline',
+        );
+        buffer.write('$indent  </parameters>$newline');
+      }
+      buffer
+          .write('$indent  <text>${_escapeXml(org.rawValue!)}</text>$newline');
+      buffer.write('$indent</org>$newline');
+      return;
+    }
+
     buffer.write('$indent<org>$newline');
 
     if (org.sortAs != null) {

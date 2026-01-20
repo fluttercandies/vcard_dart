@@ -50,13 +50,13 @@ class BinaryData {
 
   /// Creates binary data with inline content.
   const BinaryData.inline(this.data, {this.mediaType})
-    : uri = null,
-      encoding = null;
+      : uri = null,
+        encoding = null;
 
   /// Creates binary data with a URI reference.
   const BinaryData.uri(this.uri, {this.mediaType})
-    : data = null,
-      encoding = null;
+      : data = null,
+        encoding = null;
 
   /// Creates binary data from a base64 string.
   factory BinaryData.fromBase64(String base64String, {String? mediaType}) {
@@ -271,7 +271,7 @@ class Logo extends BinaryData {
 
   /// Creates logo with URI reference.
   const Logo.uri(super.uri, {super.mediaType, this.types = const [], this.pref})
-    : super.uri();
+      : super.uri();
 }
 
 /// Represents sound data (SOUND property).
@@ -349,5 +349,5 @@ class Key extends BinaryData {
 
   /// Creates key with URI reference.
   const Key.uri(super.uri, {super.mediaType, this.types = const [], this.pref})
-    : super.uri();
+      : super.uri();
 }

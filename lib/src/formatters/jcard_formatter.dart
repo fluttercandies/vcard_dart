@@ -50,18 +50,23 @@ class JCardFormatter {
 
     // N
     if (vcard.name != null && vcard.name!.isNotEmpty) {
-      properties.add([
-        'n',
-        {},
-        'text',
-        [
-          vcard.name!.family,
-          vcard.name!.given,
-          vcard.name!.additional.join(','),
-          vcard.name!.prefixes.join(','),
-          vcard.name!.suffixes.join(','),
-        ],
-      ]);
+      if (vcard.name!.isRaw && vcard.name!.rawValue != null) {
+        // Raw value - output as single text
+        properties.add(['n', {}, 'text', vcard.name!.rawValue!]);
+      } else {
+        properties.add([
+          'n',
+          {},
+          'text',
+          [
+            vcard.name!.family,
+            vcard.name!.given,
+            vcard.name!.additional.join(','),
+            vcard.name!.prefixes.join(','),
+            vcard.name!.suffixes.join(','),
+          ],
+        ]);
+      }
     }
 
     // NICKNAME
@@ -115,7 +120,12 @@ class JCardFormatter {
       if (addr.timezone != null) {
         params['tz'] = addr.timezone!;
       }
-      properties.add(['adr', params, 'text', addr.toComponents()]);
+      if (addr.isRaw && addr.rawValue != null) {
+        // Raw value - output as single text
+        properties.add(['adr', params, 'text', addr.rawValue!]);
+      } else {
+        properties.add(['adr', params, 'text', addr.toComponents()]);
+      }
     }
 
     // TEL
@@ -177,12 +187,17 @@ class JCardFormatter {
       if (vcard.organization!.sortAs != null) {
         params['sort-as'] = vcard.organization!.sortAs!;
       }
-      properties.add([
-        'org',
-        params,
-        'text',
-        vcard.organization!.toComponents(),
-      ]);
+      if (vcard.organization!.isRaw && vcard.organization!.rawValue != null) {
+        // Raw value - output as single text
+        properties.add(['org', params, 'text', vcard.organization!.rawValue!]);
+      } else {
+        properties.add([
+          'org',
+          params,
+          'text',
+          vcard.organization!.toComponents(),
+        ]);
+      }
     }
 
     // MEMBER
@@ -286,9 +301,8 @@ class JCardFormatter {
       final params = prop.parameters.toMap();
       final lowerParams = <String, dynamic>{};
       for (final entry in params.entries) {
-        lowerParams[entry.key.toLowerCase()] = entry.value.length == 1
-            ? entry.value.first
-            : entry.value;
+        lowerParams[entry.key.toLowerCase()] =
+            entry.value.length == 1 ? entry.value.first : entry.value;
       }
       properties.add([
         prop.name.toLowerCase(),
@@ -365,6 +379,12 @@ class JCardFormatter {
           vcard.name = StructuredName.fromComponents(
             value.map((e) => _stringValue(e)).toList(),
           );
+        } else {
+          // Raw value - single string
+          final rawValue = _stringValue(value);
+          if (rawValue.isNotEmpty) {
+            vcard.name = StructuredName.raw(rawValue);
+          }
         }
 
       case 'nickname':
@@ -403,6 +423,24 @@ class JCardFormatter {
               timezone: params['tz'] as String?,
             ),
           );
+        } else {
+          // Raw value - single string
+          final rawValue = _stringValue(value);
+          if (rawValue.isNotEmpty) {
+            vcard.addresses.add(
+              Address.raw(
+                rawValue,
+                types: _getTypes(params),
+                pref: _getPref(params),
+                label: params['label'] as String?,
+                language: params['language'] as String?,
+                geo: params['geo'] != null
+                    ? GeoLocation.tryParse(params['geo'] as String)
+                    : null,
+                timezone: params['tz'] as String?,
+              ),
+            );
+          }
         }
 
       case 'tel':
@@ -470,9 +508,17 @@ class JCardFormatter {
         if (value is List) {
           vcard.organization = Organization.fromComponents(
             value.map((e) => _stringValue(e)).toList(),
-          ).copyWith(sortAs: params['sort-as'] as String?);
+            sortAs: params['sort-as'] as String?,
+          );
         } else {
-          vcard.organization = Organization(name: _stringValue(value));
+          // Raw value - single string
+          final rawValue = _stringValue(value);
+          if (rawValue.isNotEmpty) {
+            vcard.organization = Organization.raw(
+              rawValue,
+              sortAs: params['sort-as'] as String?,
+            );
+          }
         }
 
       case 'member':
